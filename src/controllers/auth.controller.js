@@ -1,5 +1,6 @@
 const { users } = require("../models"),
-  utils = require("../utils/utils");
+  utils = require("../utils/utils"),
+  nodemailer = require("nodemailer");
 
 module.exports = {
   register: async (req, res) => {
@@ -11,6 +12,8 @@ module.exports = {
         },
       });
 
+      req.io.emit("newUser", data);
+
       return res.status(201).json({
         data,
       });
@@ -21,6 +24,7 @@ module.exports = {
       });
     }
   },
+
   resetPassword: async (req, res) => {
     try {
       const findUser = await users.findFirst({
@@ -47,7 +51,7 @@ module.exports = {
       const transporter = nodemailer.createTransport({
         host: "smtp.gmail.com",
         port: 465,
-        secure: false,
+        secure: true,
         auth: {
           user: process.env.EMAIL_USER,
           pass: process.env.EMAIL_PASSWORD,
@@ -66,6 +70,7 @@ module.exports = {
           console.log(err);
           return res.render("error");
         }
+        req.io.emit("passwordReset", { email: req.body.email });
 
         return res.render("success");
       });
@@ -76,6 +81,7 @@ module.exports = {
       });
     }
   },
+
   setPassword: async (req, res) => {
     try {
       const findUser = await users.findFirst({
@@ -85,7 +91,7 @@ module.exports = {
       });
 
       if (!findUser) {
-        return res.render("error");
+        return res.status(404).json({ error: "User not found" });
       }
 
       await users.update({
@@ -97,6 +103,8 @@ module.exports = {
           id: findUser.id,
         },
       });
+
+      return res.render("success");
     } catch (error) {
       console.log(error);
       return res.status(500).json({
@@ -104,4 +112,4 @@ module.exports = {
       });
     }
   },
-}; //update
+};
